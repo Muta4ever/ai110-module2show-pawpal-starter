@@ -179,3 +179,64 @@ def test_check_conflicts_same_start_time_is_conflict():
     t2 = Task("Feed", 10, start_time="10:00")
     s = Scheduler(tasks=[t1, t2], available_minutes=60)
     assert len(s.check_conflicts([t1, t2])) == 1
+
+
+# ── JSON persistence ──────────────────────────────────────────────────────────
+
+def test_owner_round_trips_to_json(tmp_path):
+    path = str(tmp_path / "owner.json")
+    owner = Owner(name="Alex", daily_available_minutes=90)
+    dog = Pet(name="Rex", species="dog")
+    owner.add_pet(dog)
+    dog.add_task(Task("Walk", 30, Priority.HIGH, start_time="09:00", frequency="daily"))
+    dog.add_task(Task("Feed", 10, Priority.MEDIUM))
+
+    owner.save_to_json(path)
+    loaded = Owner.load_from_json(path)
+
+    assert loaded.name == "Alex"
+    assert loaded.daily_available_minutes == 90
+    assert len(loaded.pets) == 1
+    assert loaded.pets[0].name == "Rex"
+    assert len(loaded.pets[0].tasks) == 2
+    assert loaded.pets[0].tasks[0].priority == Priority.HIGH
+    assert loaded.pets[0].tasks[0].frequency == "daily"
+    assert loaded.pets[0].tasks[0].start_time == "09:00"
+    assert loaded.pets[0].owner is loaded  # bidirectional link restored
+
+
+def test_task_to_dict_and_from_dict():
+    t = Task("Groom", 45, Priority.LOW, completed=True, start_time="11:00", frequency="weekly")
+    d = t.to_dict()
+    assert d["priority"] == "low"
+    t2 = Task.from_dict(d)
+    assert t2.title == "Groom"
+    assert t2.priority == Priority.LOW
+    assert t2.completed is True
+    assert t2.frequency == "weekly"
+
+
+# ── find_next_slot ────────────────────────────────────────────────────────────
+
+def test_find_next_slot_fits_before_occupied():
+    # Walk at 09:00 for 30 min; a 20-min slot from 08:00 fits before it
+    walk = Task("Walk", 30, start_time="09:00")
+    s = Scheduler(tasks=[walk], available_minutes=60)
+    assert s.find_next_slot(20, "08:00") == "08:00"
+
+
+def test_find_next_slot_skips_past_occupied():
+    # Walk at 09:00 for 30 min; a 90-min slot won't fit in the 60-min gap before
+    walk = Task("Walk", 30, start_time="09:00")
+    s = Scheduler(tasks=[walk], available_minutes=120)
+    assert s.find_next_slot(90, "08:00") == "09:30"
+
+
+def test_find_next_slot_no_timed_tasks_returns_start():
+    s = Scheduler(tasks=[Task("Feed", 10)], available_minutes=60)
+    assert s.find_next_slot(30, "08:00") == "08:00"
+
+
+def test_find_next_slot_returns_none_when_no_room():
+    s = Scheduler(tasks=[Task("X", 1, start_time="08:00")], available_minutes=60)
+    assert s.find_next_slot(900, "08:00") is None

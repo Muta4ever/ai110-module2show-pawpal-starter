@@ -22,6 +22,17 @@ Your final app should:
 - Display the plan clearly (and ideally explain the reasoning)
 - Include tests for the most important scheduling behaviors
 
+## Challenge Extensions
+
+### Challenge 1 — Next Available Slot (`find_next_slot`)
+`Scheduler.find_next_slot(duration, start_after)` scans all timed tasks as occupied intervals and returns the earliest free window of at least `duration` minutes. The algorithm runs in O(n log n): sort occupied intervals once, then walk them linearly to find the first gap. In the UI, the "Find Next Available Slot" section lets an owner enter a duration and search start, then get an immediate suggestion — useful when resolving a conflict without manually eyeballing the schedule.
+
+### Challenge 2 — JSON Persistence (`save_to_json` / `load_from_json`)
+`Owner`, `Pet`, and `Task` each have a `to_dict()` / `from_dict()` pair. `Owner.save_to_json(path)` and `Owner.load_from_json(path)` handle serialization. The circular `pet.owner` back-reference is excluded from `Pet.to_dict()` and restored by `Owner.add_pet()` during loading, keeping the JSON clean and avoiding infinite recursion. The Streamlit app auto-loads `data.json` on startup and saves after every mutation (Set owner, Add pet, Add task) — pets and tasks survive page refreshes and browser closes.
+
+### Challenge 3 — Priority Color Coding
+Task priority is displayed with emoji indicators throughout the app: 🔴 high · 🟡 medium · 🟢 low. These appear in the task table, the sorted-by-time expander, and the generated schedule, giving owners an immediate visual scan of what's critical without reading every label.
+
 ## Features
 
 - **Priority scheduling** — `produce_plan()` sorts tasks HIGH → MEDIUM → LOW then greedily fills the owner's daily time budget. Tasks that don't fit are skipped, not dropped permanently.
