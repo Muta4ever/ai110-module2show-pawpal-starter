@@ -21,8 +21,13 @@ My initial design includes four classes: Priority (an enum), Owner, Pet, Task, a
 
 **b. Design changes**
 
-- Did your design change during implementation?
-- If yes, describe at least one change and why you made it. 
+Yes, the design changed in three meaningful ways during implementation.
+
+First, the original `Pet` class had no `tasks` field. The UML only gave it `name`, `species`, and `owner`. During implementation it became clear that without a task list on Pet, there was no natural home for tasks — they'd have to float in the Scheduler or in a global list, which would make it impossible to ask "what does Rex need today?" The fix was to add `tasks: List[Task]` to Pet with `add_task()` and `remove_task()`, making Pet the clear owner of its own care items.
+
+Second, `Owner` gained a `get_all_tasks()` method that wasn't in the original UML. This method became the bridge between Owner and Scheduler — instead of the Scheduler needing to know how to walk the pet list, it could just call `owner.get_all_tasks()`. This kept the Scheduler decoupled from Owner's internal structure.
+
+Third, `Task` grew two new fields — `start_time` (optional `"HH:MM"` string) and `frequency` (`"daily"`, `"weekly"`, or `None`) — to support conflict detection and recurrence. These weren't in the original design because those features were added in a later phase. The `Scheduler` also gained `sort_by_time()`, `check_conflicts()`, and `load_from_owner()` for the same reason.
 
 ---
 
@@ -58,13 +63,13 @@ The AI-suggested test for `test_add_task_increases_count` originally used `pet.t
 
 **a. What you tested**
 
-- What behaviors did you test?
-- Why were these tests important?
+The final test suite has 21 tests covering six areas: task completion state, Owner/Pet bidirectional wiring, `produce_plan()` behavior (priority ordering, time budget, completed-task exclusion, empty-budget edge case), `sort_by_time()` correctness (chronological order, untimed tasks last), recurrence (`next_occurrence()` for daily/weekly/one-off, start_time preservation), and conflict detection (overlap detected, adjacent not flagged, same start time, no-start_time tasks ignored).
+
+These tests mattered because scheduling bugs tend to be silent — a greedy algorithm that skips the wrong task won't crash, it'll just produce a subtly wrong plan. Having tests for each behavior made it possible to add features (like `frequency` and `start_time`) without worrying about breaking what already worked.
 
 **b. Confidence**
 
-- How confident are you that your scheduler works correctly?
-- What edge cases would you test next if you had more time?
+Confidence: **4 out of 5**. The core scheduling logic is solid and all named behaviors have direct tests. The two gaps are: (1) `next_occurrence()` returns a task with the same `start_time` but does not advance the calendar date using `timedelta` — a real daily task should move to tomorrow, not stay on today's slot; (2) there are no integration tests for the Streamlit UI, so `st.session_state` persistence is only verified manually. Given more time, I'd add date arithmetic to `next_occurrence()` and write a test that simulates a full owner → pet → task → schedule workflow end-to-end.
 
 ---
 
@@ -72,12 +77,12 @@ The AI-suggested test for `test_add_task_increases_count` originally used `pet.t
 
 **a. What went well**
 
-- What part of this project are you most satisfied with?
+The data model design held up well throughout the entire project. Starting with a clear ownership hierarchy — Owner contains Pets, Pets contain Tasks — meant that every later feature (sorting, recurrence, conflict detection) had an obvious place to live. The Scheduler never needed to manage its own task list directly; it could just ask the Owner. That clean separation made each phase additive rather than disruptive.
 
 **b. What you would improve**
 
-- If you had another iteration, what would you improve or redesign?
+Two things. First, `next_occurrence()` should use Python's `datetime.timedelta` to compute the actual next date rather than just returning a copy with the same time slot. Second, `produce_plan()` assigns no start times to the tasks it selects — it returns an ordered list but doesn't stamp each task with a computed `"HH:MM"` based on cumulative duration. Adding that would make conflict detection automatic (every planned task would have a start time), and the UI could show a real timeline rather than a numbered list.
 
 **c. Key takeaway**
 
-- What is one important thing you learned about designing systems or working with AI on this project?
+The most important thing I learned is that AI is a multiplier on the quality of your thinking, not a replacement for it. When the prompts were vague ("implement the scheduler"), the output was generic and needed heavy editing. When the prompts were precise ("sort HIGH first, greedily fit tasks without exceeding available_minutes, exclude completed tasks"), the output matched the design immediately. The human role in AI-assisted engineering is to have a clear enough mental model to write that second kind of prompt — and to know which suggestions to push back on when they don't fit the structure you've already built.

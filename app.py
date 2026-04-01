@@ -61,6 +61,8 @@ if not owner.pets:
     st.info("Add a pet first before adding tasks.")
 else:
     pet_names = [p.name for p in owner.pets]
+
+    # Row 1: core task fields
     col1, col2, col3, col4 = st.columns([2, 2, 1, 1])
     with col1:
         selected_pet_name = st.selectbox("Assign to pet", pet_names)
@@ -71,24 +73,39 @@ else:
     with col4:
         priority_str = st.selectbox("Priority", ["high", "medium", "low"])
 
+    # Row 2: optional scheduling fields
+    col5, col6 = st.columns(2)
+    with col5:
+        start_time_input = st.text_input(
+            "Start time (HH:MM, optional)", value="", placeholder="e.g. 09:00"
+        )
+    with col6:
+        frequency_str = st.selectbox("Frequency", ["one-off", "daily", "weekly"])
+
     if st.button("Add task"):
         target_pet = next(p for p in owner.pets if p.name == selected_pet_name)
+        start_time = start_time_input.strip() if start_time_input.strip() else None
+        frequency = None if frequency_str == "one-off" else frequency_str
         target_pet.add_task(
             Task(
                 title=task_title,
                 duration_minutes=int(duration),
                 priority=Priority(priority_str),
+                start_time=start_time,
+                frequency=frequency,
             )
         )
         st.success(f"Added '{task_title}' to {selected_pet_name}!")
 
-    # Show all tasks across all pets
+    # Task table — all tasks across all pets
     rows = [
         {
             "Pet": pet.name,
             "Task": t.title,
             "Duration (min)": t.duration_minutes,
             "Priority": t.priority.value,
+            "Start time": t.start_time or "—",
+            "Frequency": t.frequency or "one-off",
             "Done": "✓" if t.is_completed() else "",
         }
         for pet in owner.pets
@@ -96,6 +113,19 @@ else:
     ]
     if rows:
         st.table(rows)
+
+        # Sorted-by-time view when any task has a start_time
+        scheduler_preview = Scheduler()
+        scheduler_preview.load_from_owner(owner)
+        sorted_tasks = scheduler_preview.sort_by_time()
+        timed = [t for t in sorted_tasks if t.start_time]
+        if timed:
+            with st.expander("View tasks sorted by start time"):
+                for t in sorted_tasks:
+                    time_label = t.start_time if t.start_time else "unscheduled"
+                    st.markdown(
+                        f"- **{t.title}** · {time_label} · {t.duration_minutes} min · {t.priority.value}"
+                    )
     else:
         st.info("No tasks yet.")
 
@@ -109,19 +139,32 @@ if st.button("Generate schedule"):
     plan = scheduler.produce_plan()
 
     if not plan:
-        st.warning(
-            "No tasks fit within your available time, or no tasks have been added."
-        )
+        st.warning("No tasks fit within your available time, or no tasks have been added.")
     else:
         total = sum(t.duration_minutes for t in plan)
         skipped = len(owner.get_all_tasks()) - len(plan)
         st.success(
             f"Scheduled **{len(plan)} task(s)** — "
             f"{total} of {owner.daily_available_minutes} min used"
-            + (f" · {skipped} task(s) skipped (over budget or already done)" if skipped else "")
+            + (f" · {skipped} skipped (over budget or already done)" if skipped else "")
         )
+
         for i, task in enumerate(plan, 1):
+            time_label = f" @ {task.start_time}" if task.start_time else ""
+            freq_label = f" · _{task.frequency}_" if task.frequency else ""
             st.markdown(
-                f"**{i}. {task.title}** — {task.duration_minutes} min · "
-                f"*{task.priority.value} priority*"
+                f"**{i}. {task.title}**{time_label} — "
+                f"{task.duration_minutes} min · *{task.priority.value} priority*{freq_label}"
+            )
+
+        # Conflict warnings
+        warnings = scheduler.check_conflicts(plan)
+        if warnings:
+            st.divider()
+            st.markdown("**⚠️ Scheduling conflicts detected:**")
+            for w in warnings:
+                st.warning(w)
+            st.caption(
+                "Tip: adjust start times so tasks don't overlap, "
+                "or leave start time blank to let the scheduler sequence them automatically."
             )

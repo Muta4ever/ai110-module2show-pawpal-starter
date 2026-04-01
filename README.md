@@ -22,6 +22,18 @@ Your final app should:
 - Display the plan clearly (and ideally explain the reasoning)
 - Include tests for the most important scheduling behaviors
 
+## Features
+
+- **Priority scheduling** — `produce_plan()` sorts tasks HIGH → MEDIUM → LOW then greedily fills the owner's daily time budget. Tasks that don't fit are skipped, not dropped permanently.
+- **Time-based sorting** — `sort_by_time()` returns all tasks in chronological order by start time. Tasks without a start time are appended at the end.
+- **Conflict detection** — `check_conflicts()` scans the scheduled plan for overlapping time windows and returns plain-English warnings. Only tasks with an explicit `start_time` are checked, so owners who don't use clock-based scheduling see no false positives.
+- **Recurring tasks** — Tasks can be marked `"daily"` or `"weekly"`. Calling `next_occurrence()` on a completed recurring task returns a fresh copy ready to be added back to the pet's task list.
+- **Persistent UI state** — The Streamlit app stores the `Owner` object in `st.session_state` so data survives reruns. Adding pets and tasks mid-session never resets earlier work.
+
+## Smarter Scheduling
+
+The scheduler uses a **greedy algorithm**: tasks are sorted by priority, then selected in order as long as they fit within the owner's available minutes. This means the plan is always explainable — each task is either included (it fit) or skipped (it didn't), with no hidden optimization. Conflict warnings are surfaced inline after generating the schedule so owners can adjust start times without leaving the app.
+
 ## Testing PawPal+
 
 Run the full test suite with:
