@@ -6,12 +6,23 @@
 
 - Briefly describe your initial UML design.
 - What classes did you include, and what responsibilities did you assign to each?
+a. Initial design
+My initial design includes four classes: Priority (an enum), Owner, Pet, Task, and a Scheduler class.
+
+1. Owner holds the owner's name and how many minutes per day they have available for pet care. It maintains a list of their pets and can add or remove them.
+
+2. Pet holds the pet's name and species, and keeps a reference to its owner. It can be assigned to an owner via set_owner().
+
+3. Task represents a single care activity (such as a walk or feeding). It stores a title, how long it takes in minutes, a priority level (low/medium/high via the Priority enum), and whether it has been completed.
+
+4. Scheduler takes a list of tasks and the owner's available minutes, then produces an ordered daily plan via produce_plan(). It also supports adding, removing, and clearing tasks from the pool.
+
 
 
 **b. Design changes**
 
 - Did your design change during implementation?
-- If yes, describe at least one change and why you made it.
+- If yes, describe at least one change and why you made it. 
 
 ---
 
