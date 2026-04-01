@@ -1,0 +1,11 @@
+{
+  "name": "Muta",
+  "daily_available_minutes": 61,
+  "pets": [
+    {
+      "name": "Rex",
+      "species": "cat",
+      "tasks": []
+    }
+  ]
+}
