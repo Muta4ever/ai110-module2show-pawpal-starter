@@ -110,6 +110,7 @@ class Task:
 		priority: Priority level for scheduling decisions.
 		completed: Whether the task has been completed.
 		start_time: Optional scheduled start time in 'HH:MM' format.
+		frequency: Recurrence pattern — 'daily', 'weekly', or None for one-off.
 	"""
 
 	title: str
@@ -117,6 +118,7 @@ class Task:
 	priority: Priority = Priority.MEDIUM
 	completed: bool = False
 	start_time: Optional[str] = None
+	frequency: Optional[str] = None  # "daily", "weekly", or None
 
 	def mark_complete(self) -> None:
 		"""Mark this task as completed."""
@@ -125,6 +127,24 @@ class Task:
 	def is_completed(self) -> bool:
 		"""Return True if the task has been completed."""
 		return self.completed
+
+	def next_occurrence(self) -> Optional["Task"]:
+		"""Return a fresh copy of this task for its next recurrence, or None.
+
+		A new Task is returned with the same title, duration, priority,
+		start_time, and frequency, but completed=False. Returns None if
+		frequency is not set (one-off task).
+		"""
+		if self.frequency is None:
+			return None
+		return Task(
+			title=self.title,
+			duration_minutes=self.duration_minutes,
+			priority=self.priority,
+			completed=False,
+			start_time=self.start_time,
+			frequency=self.frequency,
+		)
 
 
 class Scheduler:
@@ -182,6 +202,19 @@ class Scheduler:
 	def clear_tasks(self) -> None:
 		"""Remove all tasks from the scheduler."""
 		self.tasks.clear()
+
+	def sort_by_time(self) -> List[Task]:
+		"""Return all tasks sorted chronologically by start_time.
+
+		Tasks with a start_time come first (earliest first). Tasks without
+		a start_time are appended at the end in their original order.
+		"""
+		timed = sorted(
+			(t for t in self.tasks if t.start_time is not None),
+			key=lambda t: _time_to_minutes(t.start_time),  # type: ignore[arg-type]
+		)
+		untimed = [t for t in self.tasks if t.start_time is None]
+		return timed + untimed
 
 	def check_conflicts(self, plan: List[Task]) -> List[str]:
 		"""Return warning strings for any overlapping tasks in plan.

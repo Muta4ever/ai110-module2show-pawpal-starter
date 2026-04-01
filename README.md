@@ -22,6 +22,28 @@ Your final app should:
 - Display the plan clearly (and ideally explain the reasoning)
 - Include tests for the most important scheduling behaviors
 
+## Testing PawPal+
+
+Run the full test suite with:
+
+```bash
+python -m pytest
+```
+
+The suite covers 21 tests across five areas:
+
+| Area | What's tested |
+|---|---|
+| Task basics | `mark_complete()` flips status; `is_completed()` defaults to False |
+| Owner / Pet wiring | `add_pet()` sets bidirectional link; removing a pet clears the reference; pet with no tasks returns empty plan |
+| `produce_plan()` | Priority ordering (HIGH → MEDIUM → LOW); time budget respected; completed tasks excluded; empty result when nothing fits |
+| Sorting | `sort_by_time()` returns tasks chronologically; untimed tasks sorted to the end |
+| Recurrence | `next_occurrence()` on a daily/weekly task returns a fresh incomplete copy; one-off tasks return None; start_time is preserved |
+| Conflict detection | Overlapping time windows flagged; adjacent (non-overlapping) tasks pass; tasks without `start_time` ignored |
+
+**Confidence level: ★★★★☆**
+Core scheduling logic and all named behaviors are covered. The remaining gap is integration-level testing (UI + session state) and date arithmetic for recurring tasks (next_occurrence currently preserves the same time slot but does not advance the calendar date).
+
 ## Getting started
 
 ### Setup
