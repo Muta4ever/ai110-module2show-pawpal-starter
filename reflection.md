@@ -30,13 +30,11 @@ My initial design includes four classes: Priority (an enum), Owner, Pet, Task, a
 
 **a. Constraints and priorities**
 
-- What constraints does your scheduler consider (for example: time, priority, preferences)?
-- How did you decide which constraints mattered most?
+The scheduler considers two constraints: **time** (the owner's `daily_available_minutes` budget) and **task priority** (HIGH / MEDIUM / LOW). Priority was treated as the primary constraint because it ensures the most important pet care happens first — a pet missing a high-priority task (like a feeding) is a worse outcome than a low-priority one being skipped. Time is the hard limit: no plan can exceed the budget regardless of priority.
 
 **b. Tradeoffs**
 
-- Describe one tradeoff your scheduler makes.
-- Why is that tradeoff reasonable for this scenario?
+The scheduler uses a **greedy approach** — it picks tasks in priority order and takes each one if it fits, without rearranging. This means a single large HIGH-priority task can block the time slot for several smaller MEDIUM tasks that would collectively fit. For example, a 45-minute bath (HIGH) could prevent three 10-minute feedings (MEDIUM) from being scheduled, even though the feedings might matter more in practice. This tradeoff is reasonable for PawPal+ because the logic stays simple and predictable — owners can read the output and understand exactly why each task was included or skipped, without needing to reason about complex optimization.
 
 ---
 
