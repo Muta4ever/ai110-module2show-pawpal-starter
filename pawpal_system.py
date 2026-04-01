@@ -1,13 +1,18 @@
-"""PawPal+ system classes (skeletons).
+"""PawPal+ system classes.
 
-Generated from UML: Owner, Pet, Task (dataclasses) and Scheduler (regular class).
-Method bodies are intentionally left as stubs with docstrings only.
+Owner, Pet, Task (dataclasses) and Scheduler (regular class).
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Optional
+
+
+def _time_to_minutes(t: str) -> int:
+    """Convert a 'HH:MM' string to total minutes since midnight."""
+    h, m = t.split(":")
+    return int(h) * 60 + int(m)
 
 
 class Priority(Enum):
@@ -104,12 +109,14 @@ class Task:
 		duration_minutes: How long the task takes in minutes.
 		priority: Priority level for scheduling decisions.
 		completed: Whether the task has been completed.
+		start_time: Optional scheduled start time in 'HH:MM' format.
 	"""
 
 	title: str
 	duration_minutes: int
 	priority: Priority = Priority.MEDIUM
 	completed: bool = False
+	start_time: Optional[str] = None
 
 	def mark_complete(self) -> None:
 		"""Mark this task as completed."""
@@ -175,3 +182,31 @@ class Scheduler:
 	def clear_tasks(self) -> None:
 		"""Remove all tasks from the scheduler."""
 		self.tasks.clear()
+
+	def check_conflicts(self, plan: List[Task]) -> List[str]:
+		"""Return warning strings for any overlapping tasks in plan.
+
+		Only tasks with a start_time set are checked. Two tasks conflict
+		when their time windows [start, start + duration) overlap.
+
+		Args:
+			plan: Ordered list of tasks to inspect (e.g. from produce_plan()).
+
+		Returns:
+			List of human-readable warning strings; empty if no conflicts.
+		"""
+		timed = [t for t in plan if t.start_time is not None]
+		warnings: List[str] = []
+		for i in range(len(timed)):
+			for j in range(i + 1, len(timed)):
+				a, b = timed[i], timed[j]
+				a_start = _time_to_minutes(a.start_time)  # type: ignore[arg-type]
+				b_start = _time_to_minutes(b.start_time)  # type: ignore[arg-type]
+				a_end = a_start + a.duration_minutes
+				b_end = b_start + b.duration_minutes
+				if a_start < b_end and b_start < a_end:
+					warnings.append(
+						f"CONFLICT: '{a.title}' ({a.start_time}, {a.duration_minutes} min) "
+						f"overlaps '{b.title}' ({b.start_time}, {b.duration_minutes} min)"
+					)
+		return warnings

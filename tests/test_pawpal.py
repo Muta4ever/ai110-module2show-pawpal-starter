@@ -57,3 +57,32 @@ def test_produce_plan_excludes_completed():
     plan = s.produce_plan()
     assert done not in plan
     assert todo in plan
+
+
+# --- Conflict detection tests ---
+
+def test_check_conflicts_detects_overlap():
+    # Walk 09:00 for 30 min ends at 09:30; Feed 09:15 starts inside that window
+    walk = Task("Walk", 30, Priority.HIGH, start_time="09:00")
+    feed = Task("Feed", 20, Priority.HIGH, start_time="09:15")
+    s = Scheduler(tasks=[walk, feed], available_minutes=60)
+    warnings = s.check_conflicts([walk, feed])
+    assert len(warnings) == 1
+    assert "Walk" in warnings[0] and "Feed" in warnings[0]
+
+
+def test_check_conflicts_no_overlap():
+    # Walk 09:00 for 30 min ends exactly at 09:30; Feed starts at 09:30 — no overlap
+    walk = Task("Walk", 30, Priority.HIGH, start_time="09:00")
+    feed = Task("Feed", 10, Priority.HIGH, start_time="09:30")
+    s = Scheduler(tasks=[walk, feed], available_minutes=60)
+    warnings = s.check_conflicts([walk, feed])
+    assert warnings == []
+
+
+def test_check_conflicts_ignores_tasks_without_start_time():
+    t1 = Task("Walk", 30, Priority.HIGH)          # no start_time
+    t2 = Task("Feed", 10, Priority.HIGH)           # no start_time
+    s = Scheduler(tasks=[t1, t2], available_minutes=60)
+    warnings = s.check_conflicts([t1, t2])
+    assert warnings == []

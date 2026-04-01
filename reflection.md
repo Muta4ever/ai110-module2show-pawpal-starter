@@ -36,19 +36,21 @@ The scheduler considers two constraints: **time** (the owner's `daily_available_
 
 The scheduler uses a **greedy approach** — it picks tasks in priority order and takes each one if it fits, without rearranging. This means a single large HIGH-priority task can block the time slot for several smaller MEDIUM tasks that would collectively fit. For example, a 45-minute bath (HIGH) could prevent three 10-minute feedings (MEDIUM) from being scheduled, even though the feedings might matter more in practice. This tradeoff is reasonable for PawPal+ because the logic stays simple and predictable — owners can read the output and understand exactly why each task was included or skipped, without needing to reason about complex optimization.
 
+For conflict detection, the scheduler checks for **exact time-window overlaps** using `[start, start + duration)` intervals. It only flags tasks that have an explicit `start_time` set and ignores unscheduled tasks entirely. This means it will miss conflicts between a timed task and an untimed one. The tradeoff is intentional: since most tasks in PawPal+ are duration-based rather than clock-based, flagging every pair of unscheduled tasks would produce false positives. Owners who care about exact timing can set `start_time`; everyone else gets a clean, warning-free plan.
+
 ---
 
 ## 3. AI Collaboration
 
 **a. How you used AI**
 
-- How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
-- What kinds of prompts or questions were most helpful?
+AI was used in two main ways. First, to flesh out the method stubs in `pawpal_system.py` — the skeleton structure and docstrings were already in place from the UML design, so the prompt was specific: keep the structure, implement each method, and make `produce_plan()` sort by priority then greedily fit tasks within the time budget. Second, AI helped wire `app.py` to the logic layer by identifying where the placeholder dict-based tasks needed to be replaced with real `Task` objects and `st.session_state` needed to hold the `Owner` instance across reruns.
+
+The most useful prompts were specific ones that referenced the actual file and named the exact behavior expected (e.g., "produce_plan() should sort HIGH first, then fit tasks without exceeding available_minutes"). Vague prompts like "implement the scheduler" tend to produce generic code that doesn't match the existing structure.
 
 **b. Judgment and verification**
 
-- Describe one moment where you did not accept an AI suggestion as-is.
-- How did you evaluate or verify what the AI suggested?
+The AI-suggested test for `test_add_task_increases_count` originally used `pet.tasks.append(...)` directly instead of calling `pet.add_task()`. This was accepted in the assignment template, but it doesn't actually test the method — it just tests that a list can be appended to. The fix was to replace it with `pet.add_task(...)` so the test exercises the real code path. Verification was done by running `python3 -m pytest -v` and confirming all 7 tests passed, then manually checking that the test would fail if `add_task()` were broken.
 
 ---
 

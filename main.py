@@ -17,9 +17,20 @@ def print_schedule(plan: list[Task], owner_name: str) -> None:
     print(f"{'='*40}\n")
 
 
+def print_conflicts(warnings: list[str]) -> None:
+    if not warnings:
+        print("  No conflicts detected.\n")
+        return
+    print(f"\n{'!'*40}")
+    print("  Conflict warnings:")
+    for w in warnings:
+        print(f"  ⚠  {w}")
+    print(f"{'!'*40}\n")
+
+
 def main() -> None:
     # --- Build the data model ---
-    owner = Owner(name="Jordan", daily_available_minutes=60)
+    owner = Owner(name="Jordan", daily_available_minutes=90)
 
     dog = Pet(name="Rex", species="dog")
     cat = Pet(name="Luna", species="cat")
@@ -27,14 +38,14 @@ def main() -> None:
     owner.add_pet(dog)
     owner.add_pet(cat)
 
-    # Rex's tasks
-    dog.add_task(Task("Morning walk",      30, Priority.HIGH))
-    dog.add_task(Task("Training session",  20, Priority.MEDIUM))
-    dog.add_task(Task("Bath time",         45, Priority.LOW))
+    # Rex's tasks — walk starts at 09:00, training at 09:15 (overlaps walk by 15 min)
+    dog.add_task(Task("Morning walk",     30, Priority.HIGH,   start_time="09:00"))
+    dog.add_task(Task("Training session", 20, Priority.MEDIUM, start_time="09:15"))  # conflict
+    dog.add_task(Task("Bath time",        45, Priority.LOW,    start_time="11:00"))
 
-    # Luna's tasks
-    cat.add_task(Task("Feed Luna",         10, Priority.HIGH))
-    cat.add_task(Task("Litter box clean",  15, Priority.MEDIUM))
+    # Luna's tasks — feed at 09:00 also overlaps walk if same owner is doing both
+    cat.add_task(Task("Feed Luna",        10, Priority.HIGH,   start_time="09:00"))  # conflict with walk
+    cat.add_task(Task("Litter box clean", 15, Priority.MEDIUM, start_time="10:00"))
 
     # --- Schedule ---
     scheduler = Scheduler()
@@ -42,6 +53,11 @@ def main() -> None:
     plan = scheduler.produce_plan()
 
     print_schedule(plan, owner.name)
+
+    # --- Conflict detection ---
+    print("Checking for scheduling conflicts...")
+    warnings = scheduler.check_conflicts(plan)
+    print_conflicts(warnings)
 
 
 if __name__ == "__main__":
